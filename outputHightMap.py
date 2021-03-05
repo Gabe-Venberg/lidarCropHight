@@ -13,12 +13,45 @@ from PIL import Image
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
+def sort(array):
+    #sort by zDim column, first to last.
+    logging.debug(f'zDim sliced points is\n{array[:,zDim]}')
+    #the [::-1] reverses the resulting array, so that sortedPoints will be from biggest to smallest.
+    ind = np.argsort(array[:,zDim])[::-1]
+    sortedPoints = array[ind]
+    logging.debug(f'sortedPoints is\n{sortedPoints}')
+    return sortedPoints
+
+def scale(array, xRange, yRange, maxX, maxY):
+    logging.debug(f'xRange is {xRange} and yRange is {yRange}')
+    xScale = maxX/xRange
+    yScale = maxY/yRange
+
+    scaledArray = sortedPoints[:, 0:3]
+    scaledArray[:,xDim]=scaledArray[:,xDim]-mins[xDim]
+    scaledArray[:,xDim]=scaledArray[:,xDim]*xScale
+    logging.debug(f'xmin in scaledArray is {scaledArray[:,xDim].min()}')
+    logging.debug(f'xmin in scaledArray is {scaledArray[:,xDim].max()}')
+
+    scaledArray[:,yDim]=scaledArray[:,yDim]-mins[yDim]
+    scaledArray[:,yDim]=scaledArray[:,yDim]*yScale
+    logging.debug(f'ymin in scaledArray is {scaledArray[:,yDim].min()}')
+    logging.debug(f'ymin in scaledArray is {scaledArray[:,yDim].max()}')
+    logging.debug(f'scaledArray is\n{scaledArray}')
+    return scaledArray
+
+def isInxyRange(xMin, xMax, yMin, yMax, xVal, yVal):
+    return (xMin<=xVal) and (xVal<xMax) and (yMin<=yVal) and (yVal<yMax)
+
 imgX=100
 imgY=100
 
 #TODO: make it iterate over multiple files.
 inFile = sys.argv[1]
 lasFile = laspy.file.File(inFile, mode = "r")
+
+outFile = f'{imgX}*{imgY}{inFile}.png'
+
 #import each dimention scaled.
 x = lasFile.x
 y = lasFile.y
@@ -43,45 +76,17 @@ points = np.stack((x,y,z,intensity), axis=-1)
 # [x,y,z,intensity]]
 
 logging.debug(f'points is\n{points}')
+logging.info(f'{points.shape[0]} points in LIDAR file.')
 
 xRange = maxes[xDim]-mins[xDim]
 yRange = maxes[yDim]-mins[yDim]
 zRange = maxes[zDim]-mins[zDim]
-def sort(array):
-    #sort by zDim column, first to last.
-    logging.debug(f'zDim sliced points is\n{array[:,zDim]}')
-    #the [::-1] reverses the resulting array, so that sortedPoints will be from biggest to smallest.
-    ind = np.argsort(array[:,zDim])[::-1]
-    sortedPoints = array[ind]
-    logging.debug(f'sortedPoints is\n{sortedPoints}')
-    return sortedPoints
 
 sortedPoints = sort(points)
 
 imageArray = np.zeros((imgX, imgY))
 
-def scale(array, xRange, yRange, maxX, maxY):
-    logging.debug(f'xRange is {xRange} and yRange is {yRange}')
-    xScale = maxX/xRange
-    yScale = maxY/yRange
-
-    scaledArray = sortedPoints[:, 0:3]
-    scaledArray[:,xDim]=scaledArray[:,xDim]-mins[xDim]
-    scaledArray[:,xDim]=scaledArray[:,xDim]*xScale
-    logging.debug(f'xmin in scaledArray is {scaledArray[:,xDim].min()}')
-    logging.debug(f'xmin in scaledArray is {scaledArray[:,xDim].max()}')
-
-    scaledArray[:,yDim]=scaledArray[:,yDim]-mins[yDim]
-    scaledArray[:,yDim]=scaledArray[:,yDim]*yScale
-    logging.debug(f'ymin in scaledArray is {scaledArray[:,yDim].min()}')
-    logging.debug(f'ymin in scaledArray is {scaledArray[:,yDim].max()}')
-    logging.debug(f'scaledArray is\n{scaledArray}')
-    return scaledArray
-
 scaledArray = scale(points, xRange, yRange, imgX, imgY)
-
-def isInxyRange(xMin, xMax, yMin, yMax, xVal, yVal):
-    return (xMin<=xVal) and (xVal<xMax) and (yMin<=yVal) and (yVal<yMax)
 
 for x in range(imgX):
     for y in range(imgY):
@@ -108,4 +113,4 @@ logging.debug(f'imageArray is {imageArray}')
 
 heatMap = sns.heatmap(imageArray, center=((maxes[zDim]+mins[zDim])/2), square=True)
 heatMapFig = heatMap.get_figure()
-heatMapFig.savefig("output.png")
+heatMapFig.savefig(outFile)
