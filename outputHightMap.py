@@ -88,6 +88,7 @@ for i in range(len(points)):
 
 logging.debug(f'imageArray is {imageArray}')
 
+print('processed all points. generating heatmap.')
 heatMap = sns.heatmap(imageArray, center=(np.max(imageArray)+np.min(imageArray))/2, robust=True, square=True)
 heatMapFig = heatMap.get_figure()
 heatMapFig.savefig(outFile)
