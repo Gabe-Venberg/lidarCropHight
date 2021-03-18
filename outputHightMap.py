@@ -1,19 +1,37 @@
 #! /usr/bin/env python3
 #command line arguments:
-#    --help, -h, outputs usage of the program
-#    -x, -y, outputs width and hight of the output image
-#    --output, -o, name of output file. if there are multiple input files, there will be a number prepended to this.
-#    after all comamnd line arguments, file or files(space seperated) to process.
+#   -x, -y, width and hight of the output image
+#   --output, -o, name of output file. if there are multiple input files, there will be a number prepended to this.
+#   after all comamnd line arguments, file or files(space seperated) to process.
 
 import os.path
 import numpy as np
 import sys, argparse, laspy, logging
 import seaborn as sns; sns.set_theme()
 import matplotlib.pyplot as plt
-from PIL import Image
 
 logging.basicConfig(format='%(asctime)s:%(message)s', level=logging.INFO)
 #logging.basicConfig(format='%(asctime)s:%(message)s', level=logging.DEBUG)
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='create a top down hightmap from a LIDAR point file.')
+    parser.add_argument('file', help='.las file to process.')
+    parser.add_argument('-x', default=100, type=int, help='horizontal size (in cells) of the output image. Defaults to 100')
+    parser.add_argument('-y', default=100, type=int, help='vertical size (in cells) if the output image. Defaults to 100')
+    parser.add_argument('-o', '--output', help='name of output file. will default to [name of input file].png if not given.')
+    args=parser.parse_args()
+
+    imgX=args.x
+    imgY=args.y
+
+    inFile=args.file
+
+    if args.output==None:
+        outFile = f'{os.path.dirname(inFile)}/{os.path.basename(inFile)}.png'
+    else:
+        outFile=args.output
+    
+    print(f'outputing to {outFile}')
 
 def scale(array, desiredmaxX, desiredmaxY):
     logging.debug(f'xMax is {np.max(array[:,xDim])} and xMin is {np.min(array[:,xDim])}')
@@ -34,18 +52,11 @@ def scale(array, desiredmaxX, desiredmaxY):
 
     return array
 
-imgX=500
-imgY=500
-
 #TODO: make it iterate over multiple files.
-inFile = os.path.realpath(sys.argv[1])
-lasFile = laspy.file.File(inFile, mode = 'r')
-
-outFile = f'{os.path.dirname(inFile)}/{imgX}*{imgY}{os.path.basename(inFile)}.png'
-
-print(f'outputing to {outFile}')
+parse_arguments()
 
 #import each dimention scaled.
+lasFile=laspy.file.File(inFile, mode = 'r')
 z = lasFile.z
 x = lasFile.x
 y = lasFile.y
@@ -53,7 +64,7 @@ intensity = lasFile.intensity
 
 points = np.stack((z,x,y), axis=-1)
 
-#dimention that will be z(top down) dimention in final heatmap. TODO: auto detect this based on dimention with least variance.
+#dimention that will be z(top down) dimention in final heatmap. TODO: auto detect this based on dimention with least variance, while being overridable on the command line.
 zDim=1
 xDim=2
 yDim=0
